@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroFlow: Autonomous Traffic Control — System Architecture</title>
+    <meta name="description"
+        content="System architecture diagram for NeuroFlow Autonomous Traffic Control using edge computing, MQTT, and cloud analytics.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0e1a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(99, 102, 241, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(99, 102, 241, 0.04) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        header {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            text-align: center;
+            padding: 3rem 1.5rem 1.5rem;
+        }
+
+        .badge {
+            display: inline-block;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            padding: 0.35rem 1rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #a78bfa;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #c7d2fe, #818cf8, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.2;
+        }
+
+        .subtitle {
+            font-size: 1.05rem;
+            color: #94a3b8;
+            margin-top: 0.5rem;
+            font-weight: 400;
+        }
+
+        .diagram-wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1100px;
+            margin: 1.5rem auto 2rem;
+            padding: 0 1.5rem;
+        }
+
+        .diagram-card {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            border-radius: 16px;
+            padding: 2.5rem 2rem;
+            backdrop-filter: blur(12px);
+            box-shadow:
+                0 0 40px rgba(99, 102, 241, 0.06),
+                0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow-x: auto;
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+
+        .legend {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1100px;
+            padding: 0 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .legend-item {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(99, 102, 241, 0.1);
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            transition: border-color 0.3s ease, transform 0.3s ease;
+        }
+
+        .legend-item:hover {
+            border-color: rgba(99, 102, 241, 0.35);
+            transform: translateY(-2px);
+        }
+
+        .legend-icon {
+            flex-shrink: 0;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .legend-icon.edge {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+        }
+
+        .legend-icon.network {
+            background: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+        }
+
+        .legend-icon.cloud {
+            background: rgba(99, 102, 241, 0.15);
+            color: #818cf8;
+        }
+
+        .legend-icon.feedback {
+            background: rgba(244, 63, 94, 0.15);
+            color: #fb7185;
+        }
+
+        .legend-text h3 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 0.25rem;
+        }
+
+        .legend-text p {
+            font-size: 0.8rem;
+            color: #64748b;
+            line-height: 1.5;
+        }
+
+        /* Data Flow Section */
+        .data-flow {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1100px;
+            padding: 0 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .data-flow h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .flow-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .flow-step {
+            display: flex;
+            gap: 1.25rem;
+            padding: 1rem 0;
+        }
+
+        .flow-step-num {
+            flex-shrink: 0;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 800;
+            position: relative;
+        }
+
+        .flow-step-num::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            width: 2px;
+            height: calc(100% + 0.5rem);
+            transform: translateX(-50%);
+        }
+
+        .flow-step:last-child .flow-step-num::after {
+            display: none;
+        }
+
+        .flow-step-num.edge {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+        }
+
+        .flow-step-num.edge::after {
+            background: rgba(16, 185, 129, 0.2);
+        }
+
+        .flow-step-num.network {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+
+        .flow-step-num.network::after {
+            background: rgba(251, 191, 36, 0.2);
+        }
+
+        .flow-step-num.cloud {
+            background: rgba(99, 102, 241, 0.2);
+            color: #818cf8;
+        }
+
+        .flow-step-num.cloud::after {
+            background: rgba(99, 102, 241, 0.2);
+        }
+
+        .flow-step-num.feedback {
+            background: rgba(244, 63, 94, 0.2);
+            color: #fb7185;
+        }
+
+        .flow-step-content h4 {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin-bottom: 0.15rem;
+        }
+
+        .flow-step-content p {
+            font-size: 0.78rem;
+            color: #64748b;
+            line-height: 1.5;
+        }
+
+        .flow-step-content code {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            color: #a78bfa;
+        }
+
+        /* Tech Stack */
+        .tech-grid {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1100px;
+            padding: 0 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .tech-grid h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin-bottom: 1rem;
+        }
+
+        .tech-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+        }
+
+        .tech-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.85rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            background: rgba(15, 23, 42, 0.6);
+            color: #94a3b8;
+            transition: all 0.3s;
+        }
+
+        .tech-badge:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+            color: #c7d2fe;
+            transform: translateY(-1px);
+        }
+
+        .tech-badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        footer {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            padding: 1.5rem;
+            font-size: 0.75rem;
+            color: #475569;
+            border-top: 1px solid rgba(99, 102, 241, 0.08);
+            width: 100%;
+        }
+
+        .mermaid svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .legend-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="badge">System Architecture</div>
+        <h1>NeuroFlow</h1>
+        <p class="subtitle">Autonomous Traffic Control — End-to-End Architecture</p>
+    </header>
+
+    <div class="diagram-wrapper">
+        <div class="diagram-card">
+            <pre class="mermaid">
+flowchart TD
+
+    subgraph Edge["🔌 Edge Layer"]
+        direction TB
+        A["📷 CCTV Camera"]
+        B["⚙️ Edge Gateway\n(Raspberry Pi)"]
+        C["🧠 YOLOv8 Model\n(Object Detection)"]
+        A -->|"Video Feed"| B
+        B -->|"Runs"| C
+    end
+
+    subgraph Network["🌐 Network Layer"]
+        direction TB
+        D[/"📡 MQTT Protocol\n(Lightweight Messaging)"/]
+    end
+
+    subgraph Cloud["☁️ Cloud Layer"]
+        direction TB
+        E["🖥️ Traffic Controller\nServer"]
+        F[("🗄️ PostgreSQL\nDatabase")]
+        G["📊 React Dashboard\n(Visualization)"]
+        E -->|"Logs Data"| F
+        E -->|"Sends Updates"| G
+    end
+
+    subgraph Feedback["🔁 Feedback Loop"]
+        direction TB
+        H["🚦 Traffic Light\nSignal"]
+    end
+
+    B -->|"Sends Detection Data"| D
+    D -->|"Forwards to Cloud"| E
+    E -->|"Sends Command"| H
+    H -.->|"Status Update"| E
+
+    classDef edgeStyle fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#d1fae5,rx:8,ry:8
+    classDef networkStyle fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#fef3c7,rx:8,ry:8
+    classDef cloudStyle fill:#1e1b4b,stroke:#6366f1,stroke-width:2px,color:#c7d2fe,rx:8,ry:8
+    classDef feedbackStyle fill:#4c0519,stroke:#f43f5e,stroke-width:2px,color:#ffe4e6,rx:8,ry:8
+    classDef dbStyle fill:#1e1b4b,stroke:#818cf8,stroke-width:2px,color:#c7d2fe
+
+    class A,B,C edgeStyle
+    class D networkStyle
+    class E,G cloudStyle
+    class F dbStyle
+    class H feedbackStyle
+
+    style Edge fill:#022c22,stroke:#10b981,stroke-width:2px,color:#6ee7b7,rx:12,ry:12
+    style Network fill:#451a03,stroke:#f59e0b,stroke-width:2px,color:#fcd34d,rx:12,ry:12
+    style Cloud fill:#0f0a3e,stroke:#6366f1,stroke-width:2px,color:#a5b4fc,rx:12,ry:12
+    style Feedback fill:#350514,stroke:#f43f5e,stroke-width:2px,color:#fda4af,rx:12,ry:12
+            </pre>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+        <div class="legend-grid">
+            <div class="legend-item">
+                <div class="legend-icon edge">📷</div>
+                <div class="legend-text">
+                    <h3>Edge Layer</h3>
+                    <p>CCTV cameras feed video to a Raspberry Pi gateway running YOLOv8 for real-time vehicle detection
+                        at the intersection.</p>
+                </div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-icon network">📡</div>
+                <div class="legend-text">
+                    <h3>Network Layer</h3>
+                    <p>Lightweight MQTT protocol transmits JSON detection payloads from edge devices to the cloud with
+                        minimal latency.</p>
+                </div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-icon cloud">☁️</div>
+                <div class="legend-text">
+                    <h3>Cloud Layer</h3>
+                    <p>FastAPI Traffic Controller processes data, persists to PostgreSQL, and pushes live updates to the
+                        React dashboard via WebSocket.</p>
+                </div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-icon feedback">🔁</div>
+                <div class="legend-text">
+                    <h3>Feedback Loop</h3>
+                    <p>Server sends adaptive signal timing commands back to traffic lights, creating a closed-loop
+                        autonomous control system.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Flow -->
+    <div class="data-flow">
+        <div class="diagram-card">
+            <h2>📐 Data Flow Pipeline</h2>
+            <div class="flow-steps">
+                <div class="flow-step">
+                    <div class="flow-step-num edge">1</div>
+                    <div class="flow-step-content">
+                        <h4>Video Capture</h4>
+                        <p>CCTV camera streams video → OpenCV captures frames every <code>500ms</code> on the Raspberry
+                            Pi edge gateway.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-step-num edge">2</div>
+                    <div class="flow-step-content">
+                        <h4>Vehicle Detection</h4>
+                        <p>YOLOv8 nano model runs inference on each frame. Detects and classifies: <code>car</code>
+                            <code>truck</code> <code>bus</code> <code>motorcycle</code>.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-step-num network">3</div>
+                    <div class="flow-step-content">
+                        <h4>MQTT Publish</h4>
+                        <p>Detection results serialized as JSON → published to
+                            <code>neuroflow/detections/{intersection_id}</code> with QoS 1.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-step-num cloud">4</div>
+                    <div class="flow-step-content">
+                        <h4>Cloud Processing</h4>
+                        <p>Traffic Controller server receives detections → persists to PostgreSQL → computes 10-frame
+                            moving average density.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-step-num cloud">5</div>
+                    <div class="flow-step-content">
+                        <h4>Adaptive Signal Timing</h4>
+                        <p>Green duration scales linearly with density: <code>base + density × factor × base</code>,
+                            clamped to <code>15s–90s</code>.</p>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-step-num feedback">6</div>
+                    <div class="flow-step-content">
+                        <h4>Signal Command</h4>
+                        <p>Phase change published via MQTT to <code>neuroflow/commands/{id}</code> → traffic light
+                            adjusts in real-time.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tech Stack -->
+    <div class="tech-grid">
+        <h2>🛠️ Technology Stack</h2>
+        <div class="tech-badges">
+            <span class="tech-badge"><span class="dot" style="background:#3776AB"></span> Python 3.11</span>
+            <span class="tech-badge"><span class="dot" style="background:#FF6F00"></span> YOLOv8 (Ultralytics)</span>
+            <span class="tech-badge"><span class="dot" style="background:#5C3D6F"></span> OpenCV</span>
+            <span class="tech-badge"><span class="dot" style="background:#660066"></span> Eclipse Mosquitto</span>
+            <span class="tech-badge"><span class="dot" style="background:#009688"></span> FastAPI</span>
+            <span class="tech-badge"><span class="dot" style="background:#4169E1"></span> PostgreSQL 16</span>
+            <span class="tech-badge"><span class="dot" style="background:#336791"></span> SQLAlchemy</span>
+            <span class="tech-badge"><span class="dot" style="background:#61DAFB"></span> React 18</span>
+            <span class="tech-badge"><span class="dot" style="background:#FF6384"></span> Recharts</span>
+            <span class="tech-badge"><span class="dot" style="background:#2496ED"></span> Docker Compose</span>
+            <span class="tech-badge"><span class="dot" style="background:#2088FF"></span> GitHub Actions</span>
+        </div>
+    </div>
+
+    <footer>
+        NeuroFlow: Autonomous Traffic Control &bull; System Architecture v1.0 &bull; 2026
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis',
+                padding: 20,
+                nodeSpacing: 50,
+                rankSpacing: 60
+            },
+            themeVariables: {
+                darkMode: true,
+                background: '#0a0e1a',
+                primaryColor: '#1e1b4b',
+                primaryTextColor: '#c7d2fe',
+                primaryBorderColor: '#6366f1',
+                lineColor: '#64748b',
+                secondaryColor: '#064e3b',
+                tertiaryColor: '#78350f',
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '14px'
+            }
+        });
+    </script>
+</body>
+
+</html>

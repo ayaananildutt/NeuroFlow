@@ -1,0 +1,79 @@
+# ========================
+# Python
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+.venv/
+venv/
+env/
+.env
+
+# ========================
+# Node / React
+# ========================
+node_modules/
+dashboard/build/
+dashboard/.env
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+
+# ========================
+# Docker
+# ========================
+*.log
+docker-compose.override.yml
+
+# ========================
+# IDE / Editor
+# ========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+
+# ========================
+# OS
+# ========================
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# ========================
+# ML Models (large files)
+# ========================
+*.pt
+*.onnx
+*.engine
+models/
+
+# ========================
+# Database
+# ========================
+*.db
+*.sqlite3
+pgdata/
+
+# ========================
+# Misc
+# ========================
+*.bak
+*.tmp
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/

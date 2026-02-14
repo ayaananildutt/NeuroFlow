@@ -1,0 +1,136 @@
+version: "3.9"
+
+services:
+  # ──────────────────────────────────────────
+  # MQTT Broker — Eclipse Mosquitto
+  # ──────────────────────────────────────────
+  mqtt-broker:
+    image: eclipse-mosquitto:2.0
+    container_name: neuroflow-mqtt
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+    restart: unless-stopped
+    networks:
+      - neuroflow-net
+
+  # ──────────────────────────────────────────
+  # PostgreSQL Database
+  # ──────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: neuroflow-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-neuroflow}
+      POSTGRES_USER: ${POSTGRES_USER:-neuroflow_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_strong_password_here}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-neuroflow_admin} -d ${POSTGRES_DB:-neuroflow}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - neuroflow-net
+
+  # ──────────────────────────────────────────
+  # Edge Gateway (Vehicle Detection)
+  # ──────────────────────────────────────────
+  edge-gateway:
+    build:
+      context: ./edge
+      dockerfile: Dockerfile
+    container_name: neuroflow-edge
+    environment:
+      MQTT_BROKER_HOST: mqtt-broker
+      MQTT_BROKER_PORT: 1883
+      MQTT_TOPIC_DETECTIONS: ${MQTT_TOPIC_DETECTIONS:-neuroflow/detections}
+      MQTT_CLIENT_ID_EDGE: ${MQTT_CLIENT_ID_EDGE:-edge-gateway-01}
+      CAMERA_SOURCE: ${CAMERA_SOURCE:-0}
+      YOLO_MODEL_PATH: ${YOLO_MODEL_PATH:-yolov8n.pt}
+      YOLO_CONFIDENCE_THRESHOLD: ${YOLO_CONFIDENCE_THRESHOLD:-0.5}
+      DETECTION_INTERVAL_MS: ${DETECTION_INTERVAL_MS:-500}
+      INTERSECTION_ID: ${INTERSECTION_ID:-INT-001}
+    depends_on:
+      - mqtt-broker
+    restart: unless-stopped
+    networks:
+      - neuroflow-net
+
+  # ──────────────────────────────────────────
+  # Traffic Controller Server (FastAPI)
+  # ──────────────────────────────────────────
+  traffic-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: neuroflow-server
+    ports:
+      - "8000:8000"
+    environment:
+      MQTT_BROKER_HOST: mqtt-broker
+      MQTT_BROKER_PORT: 1883
+      MQTT_TOPIC_DETECTIONS: ${MQTT_TOPIC_DETECTIONS:-neuroflow/detections}
+      MQTT_TOPIC_COMMANDS: ${MQTT_TOPIC_COMMANDS:-neuroflow/commands}
+      MQTT_CLIENT_ID_SERVER: ${MQTT_CLIENT_ID_SERVER:-traffic-server}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-neuroflow_admin}:${POSTGRES_PASSWORD:-changeme_strong_password_here}@postgres:5432/${POSTGRES_DB:-neuroflow}
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8000
+      MIN_GREEN_DURATION_SEC: ${MIN_GREEN_DURATION_SEC:-15}
+      MAX_GREEN_DURATION_SEC: ${MAX_GREEN_DURATION_SEC:-90}
+      DEFAULT_GREEN_DURATION_SEC: ${DEFAULT_GREEN_DURATION_SEC:-30}
+      YELLOW_DURATION_SEC: ${YELLOW_DURATION_SEC:-5}
+      DENSITY_SCALING_FACTOR: ${DENSITY_SCALING_FACTOR:-2.5}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mqtt-broker:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - neuroflow-net
+
+  # ──────────────────────────────────────────
+  # React Dashboard
+  # ──────────────────────────────────────────
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: neuroflow-dashboard
+    ports:
+      - "3000:80"
+    environment:
+      REACT_APP_API_URL: http://localhost:8000
+      REACT_APP_WS_URL: ws://localhost:8000/ws/live
+    depends_on:
+      - traffic-server
+    restart: unless-stopped
+    networks:
+      - neuroflow-net
+
+# ──────────────────────────────────────────
+# Volumes
+# ──────────────────────────────────────────
+volumes:
+  pgdata:
+    driver: local
+  mosquitto_data:
+    driver: local
+  mosquitto_log:
+    driver: local
+
+# ──────────────────────────────────────────
+# Networks
+# ──────────────────────────────────────────
+networks:
+  neuroflow-net:
+    driver: bridge
