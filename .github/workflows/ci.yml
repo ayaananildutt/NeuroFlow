@@ -61,18 +61,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: dashboard/package-lock.json
 
       - name: Install dependencies
         working-directory: dashboard
-        run: npm ci --silent
+        run: npm install --silent
 
       - name: Build
         working-directory: dashboard
         run: npm run build
         env:
-          CI: true
+          CI: false
           REACT_APP_API_URL: http://localhost:8000
           REACT_APP_WS_URL: ws://localhost:8000/ws/live
 
@@ -86,6 +84,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Create .env from template
+        run: cp .env.example .env
 
       - name: Validate docker-compose.yml
         run: docker compose config --quiet

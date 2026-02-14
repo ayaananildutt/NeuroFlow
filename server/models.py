@@ -39,7 +39,10 @@ class Intersection(Base):
 
     # Relationships
     detections = relationship("Detection", back_populates="intersection", cascade="all, delete")
-    signal_commands = relationship("SignalCommand", back_populates="intersection", cascade="all, delete")
+    signal_commands = relationship(
+        "SignalCommand", back_populates="intersection",
+        cascade="all, delete"
+    )
     metrics = relationship("TrafficMetric", back_populates="intersection", cascade="all, delete")
 
     def __repr__(self):

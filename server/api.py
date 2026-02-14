@@ -3,7 +3,6 @@ FastAPI REST API & WebSocket Endpoints
 Provides real-time traffic data, metrics, and signal control.
 """
 
-import json
 import time
 import logging
 from datetime import datetime, timedelta
@@ -13,7 +12,9 @@ from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from database import get_async_session
-from models import Intersection, Detection, SignalCommand, TrafficMetric, SignalPhase
+from models import (
+    Intersection, Detection, SignalCommand, SignalPhase
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["Traffic API"])
@@ -83,11 +84,13 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket) -> None:
         await websocket.accept()
         self.active_connections.append(websocket)
-        logger.info(f"WebSocket client connected. Total: {len(self.active_connections)}")
+        total = len(self.active_connections)
+        logger.info(f"WebSocket client connected. Total: {total}")
 
     def disconnect(self, websocket: WebSocket) -> None:
         self.active_connections.remove(websocket)
-        logger.info(f"WebSocket client disconnected. Total: {len(self.active_connections)}")
+        total = len(self.active_connections)
+        logger.info(f"WebSocket client disconnected. Total: {total}")
 
     async def broadcast(self, message: dict) -> None:
         """Send a message to all connected WebSocket clients."""
@@ -278,7 +281,8 @@ async def override_signal(
     except ValueError:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid phase. Valid phases: {[p.value for p in SignalPhase]}"
+            detail="Invalid phase. Valid: "
+                   f"{[p.value for p in SignalPhase]}"
         )
 
     command = _traffic_controller.manual_override(
